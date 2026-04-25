@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia de Estudos Estratégico: Ainda Estou Aqui</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Open+Sans:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #F3F4F6; /* Tailwind gray-100 */
+        }
+
+        h1, h2, h3, .font-serif {
+            font-family: 'Merriweather', serif;
+        }
+
+        /* Container for Chart.js to ensure responsiveness and prevent layout breakage */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #9CA3AF; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6B7280; }
+
+        /* Hide tabs initially */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .option-btn {
+            transition: all 0.2s ease;
+        }
+        .option-btn:hover:not(:disabled) {
+            background-color: #E5E7EB;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased h-screen flex overflow-hidden">
+
+    <!-- Chosen Palette: Warm Neutrals (Gray-100 to Gray-900 for text/bg), muted sepia/amber accents (Amber-700) for memory themes, Green-600/Red-600 for quiz feedback. -->
+    
+    <!-- Application Structure Plan: 
+         A Dashboard/SPA layout. Left sidebar for navigation between study modules. 
+         Modules: 
+         1. Resumo Estratégico (Core book facts & themes).
+         2. Contexto Histórico (Dictatorship details needed for exams).
+         3. Análise Linguística (Syntax, Figures of Speech).
+         4. Simulado Múltipla Escolha (30 questions focusing on UERJ/AOCP style with interactive feedback).
+         5. Simulado Certo/Errado (10 questions CEBRASPE style).
+         6. Desempenho (Visual Chart showing progress).
+         Rationale: This structure mimics a professional study platform, allowing the student to review theory first, apply knowledge in simulations, and immediately learn from mistakes via the interactive UI, culminating in a visual performance review.
+    -->
+
+    <!-- Visualization & Content Choices: 
+         - Goal: Inform/Review -> Method: Structured text cards (Tailwind) -> Interaction: Tab navigation. Justification: Easy reading for theoretical review.
+         - Goal: Test Knowledge -> Method: Interactive Quiz Forms -> Interaction: Clickable options, immediate color-coded feedback (Green/Red), and dynamic insertion of explanatory text below the clicked option. Justification: Active learning, forces the user to understand *why* an option is wrong (pegadinhas).
+         - Goal: Track Progress -> Method: Radar Chart (Chart.js) -> Interaction: Automatically updates based on quiz answers. Justification: Provides a holistic view of the student's strengths and weaknesses across subjects (History, Interpretation, Grammar). NO SVG/Mermaid used. Canvas used for Chart.
+    -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <!-- Sidebar -->
+    <nav class="w-64 bg-gray-900 text-white flex flex-col h-full shrink-0 shadow-lg z-10">
+        <div class="p-6">
+            <h1 class="text-xl font-bold font-serif leading-tight text-amber-400">Ainda Estou Aqui</h1>
+            <p class="text-xs text-gray-400 mt-1">Guia de Estudos - Concursos</p>
+        </div>
+        <ul class="flex-1 px-4 space-y-2 overflow-y-auto">
+            <li><button onclick="switchTab('resumo')" class="nav-btn w-full text-left px-4 py-2 rounded bg-gray-800 text-amber-400 hover:bg-gray-700 transition" data-target="resumo"><span class="mr-2">&#128214;</span> Resumo Estratégico</button></li>
+            <li><button onclick="switchTab('historia')" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-700 transition" data-target="historia"><span class="mr-2">&#127980;</span> Contexto Histórico</button></li>
+            <li><button onclick="switchTab('linguagem')" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-700 transition" data-target="linguagem"><span class="mr-2">&#128221;</span> Análise de Linguagem</button></li>
+            <li><button onclick="switchTab('professor-ia')" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-700 transition text-purple-400" data-target="professor-ia"><span class="mr-2">✨</span> Professor IA</button></li>
+            <li class="pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Simulados</li>
+            <li><button onclick="switchTab('quiz-mc')" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-700 transition" data-target="quiz-mc"><span class="mr-2">&#10067;</span> Múltipla Escolha (30q)</button></li>
+            <li><button onclick="switchTab('quiz-ce')" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-700 transition" data-target="quiz-ce"><span class="mr-2">&#9989;</span> Certo/Errado (10q)</button></li>
+            <li class="pt-4"><button onclick="switchTab('desempenho')" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-700 text-green-400 transition" data-target="desempenho"><span class="mr-2">&#128200;</span> Seu Desempenho</button></li>
+        </ul>
+        <div class="p-4 text-xs text-gray-500 border-t border-gray-700">
+            Foco: UERJ, AOCP, CEBRASPE
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 h-full overflow-y-auto bg-gray-50 relative">
+        <div class="max-w-4xl mx-auto p-8">
+
+            <!-- TAB: Resumo Estratégico -->
+            <section id="resumo" class="tab-content active">
+                <header class="mb-8 border-b pb-4">
+                    <h2 class="text-3xl font-serif font-bold text-gray-900">Resumo Estratégico para Provas</h2>
+                    <p class="text-gray-600 mt-2">Visão geral da obra, gênero literário e foco narrativo.</p>
+                </header>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <h3 class="font-bold text-amber-700 mb-2 border-b pb-1">Ficha Técnica & Gênero</h3>
+                        <ul class="text-sm space-y-2">
+                            <li><strong>Autor:</strong> Marcelo Rubens Paiva.</li>
+                            <li><strong>Gênero:</strong> Autobiografia, Memórias, Autoficção, Relato Histórico.</li>
+                            <li><strong>Foco Narrativo:</strong> 1ª pessoa (o próprio autor narra, transitando entre suas memórias de infância, a vida adulta e a pesquisa histórica).</li>
+                            <li><strong>Tom:</strong> Confessional, jornalístico em alguns momentos, e profundamente emocional.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <h3 class="font-bold text-amber-700 mb-2 border-b pb-1">O Eixo Central</h3>
+                        <p class="text-sm">O livro não é apenas sobre o desaparecimento do ex-deputado <strong>Rubens Paiva</strong> pela ditadura militar em 1971. O grande eixo e heroína da obra é <strong>Eunice Paiva</strong>, a mãe do autor. O livro narra a metamorfose de uma dona de casa em ativista de direitos humanos, advogada, e sua posterior luta contra o <strong>Alzheimer</strong>.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
+                    <h3 class="font-bold text-amber-700 mb-4 text-lg border-b pb-2">Paralelismo Temático (Muito cobrado em provas!)</h3>
+                    <p class="mb-4">As bancas (especialmente UERJ) adoram o <strong>paralelismo entre a memória individual e a memória nacional</strong> proposto pelo livro:</p>
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex-1 bg-gray-50 p-4 border rounded">
+                            <span class="block font-bold text-gray-700 text-center mb-2">Microcosmo (Eunice)</span>
+                            <p class="text-sm text-center">Doença de Alzheimer apagando gradativamente suas memórias, sua fala e sua identidade.</p>
+                        </div>
+                        <div class="flex items-center justify-center text-2xl font-bold text-gray-400">&#8644;</div>
+                        <div class="flex-1 bg-gray-50 p-4 border rounded">
+                            <span class="block font-bold text-gray-700 text-center mb-2">Macrocosmo (Brasil)</span>
+                            <p class="text-sm text-center">Amnésia institucional. A Lei de Anistia, a ocultação de documentos da ditadura e a dificuldade de lidar com o passado.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: Contexto Histórico -->
+            <section id="historia" class="tab-content">
+                <header class="mb-8 border-b pb-4">
+                    <h2 class="text-3xl font-serif font-bold text-gray-900">Contexto Histórico: A Ditadura</h2>
+                    <p class="text-gray-600 mt-2">Fatos essenciais abordados no livro e cobrados em questões de História do Brasil (CEBRASPE).</p>
+                </header>
+
+                <div class="space-y-6">
+                    <div class="flex gap-4">
+                        <div class="w-16 h-16 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-xl shrink-0 border-4 border-white shadow">1964</div>
+                        <div class="bg-white p-4 rounded border shadow-sm flex-1">
+                            <h4 class="font-bold text-lg">O Golpe e a Cassação</h4>
+                            <p class="text-sm mt-1">Rubens Paiva era deputado federal pelo PTB. Após o golpe civil-militar de 64, ele defendeu a legalidade (governo Jango) e teve seu mandato cassado logo no primeiro Ato Institucional (AI-1), exilando-se brevemente.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-16 h-16 bg-red-100 text-red-700 rounded-full flex items-center justify-center font-bold text-xl shrink-0 border-4 border-white shadow">1971</div>
+                        <div class="bg-white p-4 rounded border shadow-sm flex-1">
+                            <h4 class="font-bold text-lg">Prisão e Desaparecimento (Anos de Chumbo)</h4>
+                            <p class="text-sm mt-1">Sob o governo Médici (auge do AI-5 e repressão do DOI-CODI). Rubens foi preso em casa, no RJ, por agentes à paisana. Eunice e a filha Eliana também foram presas e encapuzadas. Rubens foi torturado e assassinado nas dependências militares. O regime forjou uma versão de "fuga" ao ser resgatado por "terroristas".</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-16 h-16 bg-gray-200 text-gray-700 rounded-full flex items-center justify-center font-bold text-xl shrink-0 border-4 border-white shadow">1979</div>
+                        <div class="bg-white p-4 rounded border shadow-sm flex-1">
+                            <h4 class="font-bold text-lg">Lei da Anistia</h4>
+                            <p class="text-sm mt-1">A Lei nº 6.683 concedeu anistia aos que cometeram crimes políticos, mas na prática funcionou como uma "autoanistia" para os militares que torturaram e mataram, impedindo a punição dos assassinos de Rubens Paiva. Tema constante de debate no livro.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-16 h-16 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-xl shrink-0 border-4 border-white shadow">2014</div>
+                        <div class="bg-white p-4 rounded border shadow-sm flex-1">
+                            <h4 class="font-bold text-lg">Comissão Nacional da Verdade (CNV)</h4>
+                            <p class="text-sm mt-1">Criada para apurar graves violações de direitos humanos (1946-1988). A CNV foi crucial para derrubar a farsa da fuga. Confirmou que Rubens Paiva foi torturado e morto no quartel. Eunice, já com Alzheimer avançado, recebe a certidão de óbito verdadeira do marido mais de 40 anos depois.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: Análise de Linguagem -->
+            <section id="linguagem" class="tab-content">
+                <header class="mb-8 border-b pb-4">
+                    <h2 class="text-3xl font-serif font-bold text-gray-900">Análise de Linguagem & Gramática</h2>
+                    <p class="text-gray-600 mt-2">Aspectos sintáticos, morfológicos e figuras de linguagem (Foco AOCP e UERJ).</p>
+                </header>
+
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="bg-white p-6 border-l-4 border-blue-500 shadow-sm">
+                        <h3 class="font-bold text-lg mb-2">Figuras de Linguagem Predominantes</h3>
+                        <ul class="list-disc pl-5 space-y-2 text-sm text-gray-700">
+                            <li><strong>Antítese / Paradoxo:</strong> O contraste entre lembrar (a luta de Eunice por justiça) e esquecer (a doença de Eunice e a sociedade brasileira). Ex: <em>"A memória falha, os arquivos se perdem, mas a dor permanece."</em></li>
+                            <li><strong>Metonímia:</strong> O uso de documentos e objetos (a certidão de óbito, cartas) para representar a vida ou a morte institucional de alguém.</li>
+                            <li><strong>Eufemismo:</strong> Como os militares tratavam a morte ("desaparecido", "foragido") para mascarar o assassinato.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-white p-6 border-l-4 border-green-500 shadow-sm">
+                        <h3 class="font-bold text-lg mb-2">Sintaxe e Estilo (Estilo AOCP)</h3>
+                        <p class="text-sm text-gray-700 mb-3">O autor utiliza frases curtas e diretas em momentos de tensão, e períodos compostos por subordinação em momentos de reflexão sobre a memória.</p>
+                        <div class="bg-gray-100 p-3 rounded text-sm font-mono text-gray-800">
+                            "A memória dela falhava. A do país também."
+                        </div>
+                        <p class="text-sm mt-2"><strong>Análise:</strong> O ponto continuativo marca uma pausa abrupta, gerando impacto. Sintaticamente, na segunda frase há uma <strong>elipse</strong> do verbo (falhava) e do substantivo (memória), evitando repetição: "A [memória] do país também [falhava]".</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: Professor IA -->
+            <section id="professor-ia" class="tab-content">
+                <header class="mb-8 border-b pb-4">
+                    <h2 class="text-3xl font-serif font-bold text-gray-900">✨ Professor IA</h2>
+                    <p class="text-gray-600 mt-2">Tire dúvidas específicas sobre a obra ou gere questões discursivas inéditas com a ajuda da Inteligência Artificial do Google Gemini.</p>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-12">
+                    <!-- Chat / Dúvidas -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-purple-200">
+                        <h3 class="font-bold text-purple-700 mb-4 text-lg border-b pb-2">Tira-Dúvidas da Obra</h3>
+                        <p class="text-sm text-gray-600 mb-4">Pergunte sobre personagens, contexto histórico, figuras de linguagem ou paralelos com a atualidade.</p>
+                        <textarea id="ai-question" class="w-full p-3 border rounded-md focus:ring-purple-500 focus:border-purple-500 outline-none mb-3 text-sm bg-gray-50" rows="3" placeholder="Ex: Qual é a principal crítica que o autor faz à Lei da Anistia?"></textarea>
+                        <button onclick="askAI()" id="btn-ask-ai" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded transition flex justify-center items-center shadow-md">
+                            <span>Perguntar ao Professor</span>
+                        </button>
+                        <div id="ai-answer-box" class="mt-6 p-4 bg-purple-50 rounded-md border border-purple-100 text-sm hidden whitespace-pre-wrap text-gray-800 leading-relaxed shadow-inner"></div>
+                    </div>
+
+                    <!-- Gerador de Discursiva -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-purple-200">
+                        <h3 class="font-bold text-purple-700 mb-4 text-lg border-b pb-2">Gerador de Questões Discursivas</h3>
+                        <p class="text-sm text-gray-600 mb-4">Gere uma questão inédita no formato UERJ ou CEBRASPE, acompanhada de um padrão de resposta (gabarito) para treinar sua escrita.</p>
+                        <select id="ai-exam-style" class="w-full p-3 border rounded-md mb-3 text-sm outline-none focus:ring-purple-500 focus:border-purple-500 bg-gray-50">
+                            <option value="UERJ">Estilo UERJ (Interpretação e Literatura)</option>
+                            <option value="CEBRASPE">Estilo CEBRASPE (História e Sociedade)</option>
+                        </select>
+                        <button onclick="generateEssayQuestion()" id="btn-gen-ai" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded transition flex justify-center items-center shadow-md">
+                            <span>Gerar Questão Inédita ✨</span>
+                        </button>
+                        <div id="ai-essay-box" class="mt-6 p-4 bg-purple-50 rounded-md border border-purple-100 text-sm hidden whitespace-pre-wrap text-gray-800 leading-relaxed shadow-inner"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: Simulado Múltipla Escolha -->
+            <section id="quiz-mc" class="tab-content">
+                <header class="mb-8 border-b pb-4">
+                    <h2 class="text-3xl font-serif font-bold text-gray-900">Simulado: Múltipla Escolha (30 Questões)</h2>
+                    <p class="text-gray-600 mt-2">Estilo UERJ e AOCP. Clique na alternativa. Se errar, descubra o motivo (gabarito comentado focado na pegadinha).</p>
+                </header>
+                <div id="mc-container" class="space-y-8 pb-12">
+                    <!-- MC Questions will be injected here via JS -->
+                </div>
+            </section>
+
+            <!-- TAB: Simulado Certo/Errado -->
+            <section id="quiz-ce" class="tab-content">
+                <header class="mb-8 border-b pb-4">
+                    <h2 class="text-3xl font-serif font-bold text-gray-900">Simulado: Certo ou Errado (10 Questões)</h2>
+                    <p class="text-gray-600 mt-2">Estilo CEBRASPE (Cespe). Uma errada anula uma certa na vida real, mas aqui vamos focar no aprendizado dos conceitos.</p>
+                </header>
+                <div id="ce-container" class="space-y-6 pb-12">
+                    <!-- CE Questions will be injected here via JS -->
+                </div>
+            </section>
+
+            <!-- TAB: Desempenho -->
+            <section id="desempenho" class="tab-content">
+                <header class="mb-8 border-b pb-4">
+                    <h2 class="text-3xl font-serif font-bold text-gray-900">Seu Desempenho Analítico</h2>
+                    <p class="text-gray-600 mt-2">Avalie seus conhecimentos por área do edital.</p>
+                </header>
+                <div class="bg-white p-6 rounded-lg shadow border mb-6 flex flex-col items-center">
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                    <div id="stats-text" class="mt-6 text-center text-gray-700">
+                        Responda algumas questões para ver seu gráfico!
+                    </div>
+                    <button onclick="resetProgress()" class="mt-8 px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-sm font-bold">Zerar Progresso</button>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        // --- DATA ARCHITECTURE ---
+        // 30 Multiple Choice Questions focusing on Interpretation, Syntax, History, Figures of Speech.
+        const mcQuestions = [
+            {
+                id: "mc1", category: "Interpretação/História",
+                text: "Segundo a narrativa de 'Ainda estou aqui', o desaparecimento de Rubens Paiva é tratado inicialmente pelas forças da repressão como:",
+                options: {
+                    A: "Uma morte acidental durante interrogatório de rotina.",
+                    B: "Um exílio voluntário para o Chile financiado pelo próprio partido.",
+                    C: "Uma fuga orquestrada por terroristas que interceptaram o veículo militar.",
+                    D: "Um suicídio na cela do DOI-CODI, semelhante ao caso Herzog.",
+                    E: "Um erro de identidade, alegando que prenderam a pessoa errada."
+                }, correct: "C",
+                explanations: {
+                    A: "Pegadinha. Eles nunca assumiram a morte durante a ditadura.",
+                    B: "Incorreto. Ele já havia voltado do exílio prévio.",
+                    C: "CORRETO! O regime forjou a versão de que o carro que o transportava foi atacado por terroristas e ele fugiu, ocultando assim o cadáver e o assassinato.",
+                    D: "Pegadinha. A versão de suicídio foi forjada para Vladimir Herzog, não para Rubens Paiva.",
+                    E: "Incorreto. A prisão foi direcionada a ele."
+                }
+            },
+            {
+                id: "mc2", category: "Literatura/Metáfora",
+                text: "No livro, Marcelo Rubens Paiva estabelece um forte paralelo entre a condição clínica de sua mãe, Eunice, e a situação sociopolítica do Brasil. Esse paralelo baseia-se primordialmente em qual conceito?",
+                options: {
+                    A: "Na resiliência física de ambos frente ao envelhecimento inevitável.",
+                    B: "No apagamento progressivo da memória e na dificuldade de reter o passado.",
+                    C: "Na busca incessante por vingança contra os ofensores.",
+                    D: "Na dependência tecnológica para sobreviver na modernidade.",
+                    E: "Na hipermnésia (excesso de memória) que paralisa as ações presentes."
+                }, correct: "B",
+                explanations: {
+                    A: "O foco não é físico, é psicológico/histórico.",
+                    B: "CORRETO! O autor correlaciona o Alzheimer de Eunice (esquecimento individual) com a Lei da Anistia e a falta de memória do Brasil (esquecimento coletivo/institucional).",
+                    C: "Incorreto. Eunice buscou justiça, não vingança.",
+                    D: "Incorreto. Extrapola totalmente o texto.",
+                    E: "Pegadinha semântica. Ocorre o oposto (amnésia), não hipermnésia."
+                }
+            },
+            {
+                id: "mc3", category: "Sintaxe (Estilo AOCP)",
+                text: "Considere o trecho adaptado da obra: 'A memória dela falhava, mas a do país também.' Assinale a alternativa que classifica corretamente os fenômenos linguísticos presentes.",
+                options: {
+                    A: "Ocorre pleonasmo vicioso no uso de 'também'.",
+                    B: "Há a presença de zeugma do verbo 'falhar' e do substantivo 'memória' na segunda oração.",
+                    C: "A conjunção 'mas' introduz uma oração subordinada adverbial concessiva.",
+                    D: "A palavra 'a' (em 'a do país') funciona como preposição essencial.",
+                    E: "Há um anacoluto que quebra a estruturação sintática da frase."
+                }, correct: "B",
+                explanations: {
+                    A: "Incorreto. 'Também' adiciona sentido, não é vicioso.",
+                    B: "CORRETO! Zeugma é a elipse de um termo já citado. A frase completa seria: 'mas a [memória] do país também [falhava]'.",
+                    C: "Pegadinha de conjunção. 'Mas' é coordenativa adversativa, porém aqui tem forte valor aditivo/comparativo, mas de forma alguma subordinativa concessiva (como 'embora').",
+                    D: "Erro morfológico. 'A' é pronome demonstrativo (equivalente a 'aquela').",
+                    E: "Incorreto. A frase tem estrutura lógica perfeita."
+                }
+            },
+            {
+                id: "mc4", category: "História/CNV",
+                text: "Sobre o desfecho burocrático e jurídico da morte de Rubens Paiva relatado no livro, é correto afirmar que:",
+                options: {
+                    A: "A certidão de óbito verdadeira foi emitida logo após a redemocratização, em 1985.",
+                    B: "O corpo foi encontrado na década de 90 e sepultado com honras militares.",
+                    C: "Eunice Paiva jamais conseguiu a certidão de óbito do marido, morrendo sem essa resposta burocrática.",
+                    D: "A morte só foi oficialmente reconhecida pelo Estado, com a emissão da certidão atestando causas não naturais, devido aos trabalhos da Comissão Nacional da Verdade (CNV).",
+                    E: "A Lei da Anistia obrigou o Estado a pagar indenização, mas proibiu a emissão de certidão de óbito."
+                }, correct: "D",
+                explanations: {
+                    A: "Incorreto. Demorou décadas a mais.",
+                    B: "Incorreto. O corpo de Rubens Paiva nunca foi encontrado (ocultação de cadáver).",
+                    C: "Pegadinha. Ela conseguiu a certidão, embora já estivesse com Alzheimer avançado.",
+                    D: "CORRETO! Foi apenas em 2014, com a CNV, que o atestado de óbito foi emitido reconhecendo as violências sofridas nas dependências do Estado.",
+                    E: "Incorreto. A lei não proibiu a emissão, mas o Estado se negava a reconhecer o crime."
+                }
+            },
+            {
+                id: "mc5", category: "Interpretação de Texto (UERJ)",
+                text: "O título 'Ainda estou aqui' pode ser lido sob diversas perspectivas semânticas no contexto da obra. Qual das opções abaixo NÃO representa uma leitura coerente do título?",
+                options: {
+                    A: "A resistência de Eunice frente à ditadura, recusando-se a ser silenciada.",
+                    B: "A presença teimosa de memórias dolorosas que o autor não consegue apagar.",
+                    C: "O grito de sobrevivência da essência de Eunice, mesmo enquanto sua mente é tomada pelo Alzheimer.",
+                    D: "A prova cabal e física de que Rubens Paiva sobreviveu às torturas e viveu escondido.",
+                    E: "A permanência do legado familiar de luta por direitos humanos na sociedade brasileira."
+                }, correct: "D",
+                explanations: {
+                    A: "Coerente. Eunice se reinventou.",
+                    B: "Coerente com a voz narrativa.",
+                    C: "Coerente. É o principal sentido ligado à doença de Eunice.",
+                    D: "CORRETO (A exceção). Rubens Paiva foi assassinado em 1971. O título não se refere a uma sobrevivência física dele.",
+                    E: "Coerente com a trajetória da família."
+                }
+            },
+            { id: "mc6", category: "História", text: "Rubens Paiva, antes de ser cassado em 1964, destacava-se politicamente por seu envolvimento na:", options: { A: "Luta armada e fundação de guerrilhas urbanas.", B: "Defesa das Reformas de Base do governo João Goulart.", C: "Articulação do golpe militar junto a generais da linha dura.", D: "Campanha pela privatização das empresas estatais.", E: "Criação do partido ARENA, base de apoio do regime." }, correct: "B", explanations: { A: "Pegadinha. Ele nunca participou da luta armada, era um político legalista.", B: "CORRETO! Ele era do PTB e apoiava as reformas nacionalistas de Jango.", C: "Incorreto. Ele era contra o golpe.", D: "Incorreto. Perfil nacionalista.", E: "Ele era oposição, foi cassado logo no início." } },
+            { id: "mc7", category: "Morfologia", text: "Na frase 'Forjaram uma fuga ESPETACULAR', o termo destacado atua morfologicamente e semanticamente como:", options: { A: "Advérbio de modo, atenuando a ação.", B: "Substantivo, nomeando o evento.", C: "Adjetivo, ironizando a magnitude da mentira inventada pelo regime.", D: "Verbo no infinitivo, indicando ação futura.", E: "Pronome indefinido, generalizando o tipo de fuga." }, correct: "C", explanations: { A: "Não é advérbio, modifica o substantivo 'fuga'.", B: "Não é substantivo.", C: "CORRETO! É um adjetivo e, no contexto, carrega ironia sobre a narrativa fantasiosa criada pelos militares.", D: "Não é verbo.", E: "Não é pronome." } },
+            { id: "mc8", category: "Interpretação/Perfil", text: "Após o desaparecimento do marido, a transformação de Eunice Paiva é marcada principalmente por:", options: { A: "Seu isolamento total e recusa em sair de casa por décadas.", B: "Seu ingresso na luta armada na clandestinidade.", C: "Seu retorno aos estudos aos 40 anos, tornando-se advogada e defensora dos direitos indígenas e políticos.", D: "Sua aliança com militares dissidentes para investigar o caso em segredo.", E: "Seu exílio voluntário na Europa até a anistia." }, correct: "C", explanations: { A: "Falso. Ela precisou criar 5 filhos e foi à luta.", B: "Falso. A luta dela foi na esfera legal e dos direitos humanos.", C: "CORRETO! Eunice reinventa-se como advogada, é um pilar de resiliência no livro.", D: "Falso, não houve essa aliança.", E: "Falso, ela permaneceu no Brasil." } },
+            { id: "mc9", category: "Sintaxe/Pontuação", text: "Analise: 'Sem corpo, não há crime. Sem crime, não há assassino.' (Reflexão sobre o caso). O uso da vírgula nas duas orações justifica-se por:", options: { A: "Separar vocativo.", B: "Separar orações coordenadas assindéticas.", C: "Isolar adjunto adverbial deslocado ou elipse de termo condicional ('Se não há corpo...').", D: "Isolar o aposto explicativo.", E: "Marcar a omissão de um substantivo." }, correct: "C", explanations: { A: "Não há chamamento.", B: "As orações não são separadas por vírgula no meio, a vírgula separa elementos dentro da frase.", C: "CORRETO! A estrutura funciona como orações subordinadas adverbiais condicionais reduzidas/elípticas deslocadas.", D: "Não há aposto.", E: "Seria vírgula vicária, mas aqui a vírgula separa a condição da consequência." } },
+            { id: "mc10", category: "História/DOI-CODI", text: "O DOI-CODI, local para onde Rubens Paiva e a família foram levados em 1971, caracterizou-se historicamente como:", options: { A: "Um centro de triagem pacífica de opositores políticos.", B: "O principal órgão de censura prévia da imprensa.", C: "O centro de tortura e inteligência do exército, símbolo da repressão política.", D: "Um tribunal civil de exceção para julgar crimes de opinião.", E: "Uma penitenciária de segurança máxima comum." }, correct: "C", explanations: { A: "Pegadinha absurda. Longe de ser pacífico.", B: "Censura era DCDP.", C: "CORRETO! O Destacamento de Operações de Informação foi o epicentro da tortura na ditadura.", D: "Era militar e atuava à margem da justiça, com torturas, não julgamentos.", E: "Não era penitenciária comum." } },
+            { id: "mc11", category: "Literatura/Foco Narrativo", text: "Sobre o foco narrativo de 'Ainda estou aqui', é correto afirmar:", options: { A: "É narrado em 3ª pessoa, garantindo total imparcialidade.", B: "É narrado em 1ª pessoa por Eunice Paiva através de seus diários recuperados.", C: "É narrado em 1ª pessoa por Marcelo Rubens Paiva, mesclando memórias íntimas, reportagem e reflexão.", D: "Alterna capítulos narrados pelos militares e pela família Paiva.", E: "Usa narrador onisciente intruso, estilo Machado de Assis." }, correct: "C", explanations: { A: "Erro de pessoa e de proposta (não busca imparcialidade neutra).", B: "Pegadinha. O foco é nela, mas a voz é do filho Marcelo.", C: "CORRETO! O autor mistura autobiografia com jornalismo investigativo.", D: "Falso.", E: "Falso." } },
+            { id: "mc12", category: "Sintaxe/Concordância", text: "Qual frase abaixo, baseada na obra, apresenta ERRO de concordância?", options: { A: "Fazia quarenta anos que procuravam a verdade.", B: "Houveram muitos torturados nos porões do regime.", C: "A maior parte dos documentos foi destruída.", D: "Tratava-se de crimes contra a humanidade.", E: "Eunice e suas filhas foram interrogadas com capuzes." }, correct: "B", explanations: { A: "Certo. 'Fazer' indicando tempo é impessoal.", B: "CORRETO (A errada na gramática). 'Haver' no sentido de existir é impessoal. O certo é 'Houve muitos torturados'. (Pegadinha clássica AOCP/VUNESP).", C: "Certo. Sujeito partitivo permite concordância no singular ou plural.", D: "Certo. 'Tratar-se de' + índice de indeterminação do sujeito fica no singular.", E: "Certo." } },
+            { id: "mc13", category: "Interpretação", text: "No livro, a descoberta de cartas antigas escritas por Eunice serve narrativamente para:", options: { A: "Provar ao MPF quem foram os torturadores específicos.", B: "Chantagear autoridades políticas da época da CNV.", C: "Devolver a voz à mãe que agora silencia pelo Alzheimer, revelando suas angústias passadas.", D: "Provar que Rubens Paiva estava vivo no exterior.", E: "Denunciar o próprio filho por abandono." }, correct: "C", explanations: { A: "Falso. As cartas são pessoais.", B: "Falso.", C: "CORRETO! É um recurso de reconstituição da memória íntima diante do apagamento causado pela doença.", D: "Falso.", E: "Totalmente incoerente com a obra." } },
+            { id: "mc14", category: "Figuras de Linguagem", text: "'A sala de tortura era um matadouro frio.' Qual figura de linguagem predomina?", options: { A: "Prosopopeia.", B: "Ironia.", C: "Metáfora.", D: "Silepse.", E: "Catacrese." }, correct: "C", explanations: { A: "Não atribui vida a ser inanimado.", B: "Não diz o oposto do que pensa.", C: "CORRETO! Comparação implícita (sem o 'como') entre a sala e um matadouro.", D: "Não é concordância ideológica.", E: "Não é empréstimo por falta de termo." } },
+            { id: "mc15", category: "História/Anistia", text: "A Lei de Anistia (1979) é discutida na obra porque:", options: { A: "Garantia a prisão imediata dos assassinos de Rubens Paiva.", B: "Foi considerada inconstitucional pelo STF em 2010 e anulada.", C: "Perdoou apenas crimes cometidos por civis.", D: "Impediu juridicamente a condenação dos agentes do Estado que praticaram tortura e homicídio.", E: "Devolveu o mandato de deputado a Rubens Paiva postumamente." }, correct: "D", explanations: { A: "Fez o exato oposto.", B: "Pegadinha. O STF julgou em 2010, mas MANTEVE a validade da lei, infelizmente para as famílias.", C: "Falso. Foi bilateral (mas na prática blindou militares).", D: "CORRETO! O STF entendeu que crimes como tortura também foram anistiados por essa lei.", E: "Falso." } },
+            // Adding more to approach 30...
+            { id: "mc16", category: "Interpretação/UERJ", text: "O ato de apagar arquivos públicos da ditadura é comparado no livro a qual processo neurológico?", options: { A: "Neuroplasticidade.", B: "Esquizofrenia.", C: "Alzheimer.", D: "Autismo.", E: "TDAH." }, correct: "C", explanations: { A: "Falso.", B: "Falso.", C: "CORRETO! O apagamento institucional do Estado age como a doença de Eunice, destruindo os registros e identidades do passado.", D: "Falso.", E: "Falso." } },
+            { id: "mc17", category: "Morfologia", text: "Em 'Eunice lutou INDESATAVELMENTE', se essa palavra existisse no texto, o sufixo '-mente' formaria um:", options: { A: "Adjetivo de intensidade.", B: "Advérbio de modo.", C: "Substantivo abstrato.", D: "Verbo gerúndio.", E: "Pronome relativo." }, correct: "B", explanations: { A: "Falso.", B: "CORRETO! O sufixo '-mente' adicionado a adjetivos forma advérbios de modo.", C: "Sufixos substantivadores seriam -ção, -idade, etc.", D: "Falso.", E: "Falso." } },
+            { id: "mc18", category: "História", text: "A operação militar que prendeu Rubens Paiva no Rio de Janeiro e o levou às dependências do Exército estava inserida no contexto de:", options: { A: "Repressão à Guerrilha do Araguaia.", B: "Cerco e aniquilamento de políticos opositores durante os 'Anos de Chumbo'.", C: "Combate à Revolta da Armada.", D: "Campanha das Diretas Já.", E: "Intentona Comunista." }, correct: "B", explanations: { A: "Araguaia era no Norte, outro contexto.", B: "CORRETO! Governo Médici, repressão pesada urbana contra qualquer suspeito de oposição.", C: "Revolta da Armada foi no século XIX.", D: "Diretas Já foi na década de 1980.", E: "Intentona foi em 1935 (Era Vargas)." } },
+            { id: "mc19", category: "Sintaxe", text: "Identifique a função sintática de 'Rubens Paiva' em: 'Os militares torturaram Rubens Paiva até a morte.'", options: { A: "Sujeito simples.", B: "Objeto indireto.", C: "Objeto direto.", D: "Aposto.", E: "Predicativo do sujeito." }, correct: "C", explanations: { A: "Sujeito é 'Os militares'.", B: "Não tem preposição obrigatória.", C: "CORRETO! Quem tortura, tortura alguém (VTD).", D: "Não explica um termo anterior.", E: "Não indica qualidade do sujeito." } },
+            { id: "mc20", category: "Interpretação", text: "A profissão que Marcelo Rubens Paiva exerce (escritor/jornalista) influencia a obra ao:", options: { A: "Tornar o livro um relatório técnico e isento de emoções.", B: "Permitir o uso de técnicas de apuração documental mescladas com a sensibilidade memorialística.", C: "Desacreditar a versão da mãe em prol dos documentos oficiais dos militares.", D: "Focar exclusivamente na ficção fantasiosa, ignorando a história.", E: "Servir como peça jurídica formal protocolada no STF." }, correct: "B", explanations: { A: "O livro é altamente emocional.", B: "CORRETO! A habilidade jornalística ajuda na pesquisa (CNV, arquivos) e a habilidade literária na construção da memória.", C: "Absurdo. Ele defende e exalta a mãe.", D: "É autoficção/memória baseada em fatos reais.", E: "Não é uma peça jurídica (petição)." } },
+            { id: "mc21", category: "Figuras de Linguagem", text: "Quando o autor diz 'O Brasil calou-se diante do sangue', a expressão 'O Brasil' substituindo 'o povo brasileiro' ou 'as autoridades' é um exemplo de:", options: { A: "Metonímia.", B: "Onomatopeia.", C: "Hipérbole.", D: "Sinestesia.", E: "Assíndeto." }, correct: "A", explanations: { A: "CORRETO! Uso do continente (Brasil/lugar) pelo conteúdo (pessoas/povo/governo).", B: "Não imita som.", C: "Não é exagero puramente quantitativo.", D: "Não mistura sentidos.", E: "Não é ausência de conjunção." } },
+            { id: "mc22", category: "Gramática/Crase", text: "Assinale a opção com uso CORRETO da crase baseado no contexto: 'A família dedicou-se ___ busca pela verdade.'", options: { A: "a", B: "à", C: "as", D: "às", E: "ha" }, correct: "B", explanations: { A: "Falta a preposição de 'dedicou-se a'.", B: "CORRETO! Dedicou-se a (preposição) + a (artigo) busca = à.", C: "Plural incorreto.", D: "Plural incorreto.", E: "Erro ortográfico." } },
+            { id: "mc23", category: "História", text: "O que justificava, segundo a ditadura (em sua doutrina de Segurança Nacional), a prisão de deputados cassados e civis?", options: { A: "O combate à corrupção eleitoral apenas.", B: "A suposta ameaça da subversão comunista e a defesa da ordem interna.", C: "A pressão dos Estados Unidos para implantar o capitalismo financeiro, abolindo a indústria nacional.", D: "A tentativa de proteger essas pessoas de ataques de grupos extremistas de direita.", E: "O desejo de convocar novas eleições puramente democráticas." }, correct: "B", explanations: { A: "Não era o foco principal justificador da violência.", B: "CORRETO! A Doutrina de Segurança Nacional via o 'inimigo interno' (comunistas, subversivos) como ameaça à ordem.", C: "Contexto errado para justificar prisões políticas diretas.", D: "Eles eram os próprios agentes de direita.", E: "A ditadura cancelou eleições diretas para presidente." } },
+            { id: "mc24", category: "Interpretação", text: "A casa da família no Rio de Janeiro, frequentemente mencionada, representa na obra:", options: { A: "Um bunker impenetrável onde se sentiam seguros.", B: "O cenário da invasão abrupta que rompeu a paz familiar, dividindo a vida em 'antes' e 'depois'.", C: "Um local que a família vendeu rapidamente sem sentir saudade.", D: "O quartel-general de grupos terroristas.", E: "Uma metáfora para a riqueza inesgotável da família." }, correct: "B", explanations: { A: "Foi invadida e destruída em seu sentido de segurança.", B: "CORRETO! O momento da prisão em casa é a fratura exposta da obra.", C: "Falso.", D: "Essa era a falsa alegação dos militares.", E: "Falso." } },
+            { id: "mc25", category: "Sintaxe", text: "No período: 'Ela sorria, EMBORA não reconhecesse mais ninguém.', a conjunção destacada estabelece relação de:", options: { A: "Causa.", B: "Condição.", C: "Concessão.", D: "Tempo.", E: "Conformidade." }, correct: "C", explanations: { A: "Não é causa.", B: "Não é se/caso.", C: "CORRETO! Concessiva indica uma ideia contrária (não reconhecer) que não impede a principal (sorrir).", D: "Não indica quando.", E: "Não é conforme." } },
+            { id: "mc26", category: "Literatura/Voz", text: "Podemos classificar o tom do relato sobre os dias finais de Eunice como:", options: { A: "Estritamente clínico e distanciado.", B: "Rancoroso e voltado à vingança.", C: "Lírico, afetuoso e resignado diante do apagamento inevitável.", D: "Cômico e debochado.", E: "Ufanista e patriótico." }, correct: "C", explanations: { A: "É cheio de afeto e emoção íntima.", B: "Não foca na vingança nesse momento da doença.", C: "CORRETO! Há uma beleza lírica e melancólica no modo como Marcelo descreve a perda gradativa da mãe para o Alzheimer.", D: "Absurdo.", E: "Fora de contexto." } },
+            { id: "mc27", category: "Gramática/Pronomes", text: "Em 'Eles o torturaram até a morte', o pronome 'o' exerce a função de:", options: { A: "Sujeito.", B: "Objeto Direto.", C: "Objeto Indireto.", D: "Adjunto Adnominal.", E: "Pronome demonstrativo." }, correct: "B", explanations: { A: "Eles é o sujeito.", B: "CORRETO! Retoma Rubens Paiva, recebendo a ação diretamente (sem preposição exigida pelo verbo torturar).", C: "O pronome oblíquo 'o' nunca é objeto indireto (seria 'lhe').", D: "Falso.", E: "É pronome pessoal oblíquo." } },
+            { id: "mc28", category: "História", text: "O AI-5 (Ato Institucional nº 5), vigente na época da morte de Rubens, permitia:", options: { A: "O habeas corpus indiscriminado.", B: "A suspensão de garantias constitucionais, fechamento do Congresso e prisões arbitrárias.", C: "O pluripartidarismo imediato.", D: "A eleição direta para presidente da República.", E: "A liberdade total de imprensa." }, correct: "B", explanations: { A: "O AI-5 SUSPENDEU o habeas corpus para crimes políticos.", B: "CORRETO! Foi o instrumento que inaugurou os 'anos de chumbo', dando poder quase absoluto ao Executivo.", C: "Foi a época do bipartidarismo forçado (Arena/MDB).", D: "Falso.", E: "Instituiu censura prévia." } },
+            { id: "mc29", category: "Interpretação", text: "Ao receber o atestado de óbito emitido em 2014, a reação de Eunice (devido ao Alzheimer avançado) evidencia:", options: { A: "O triunfo completo da justiça no tempo perfeito.", B: "A crueldade do tempo: a resposta pelo qual lutou a vida toda chegou quando ela já não podia mais compreendê-la.", C: "Uma encenação elaborada por ela para não dar satisfação à mídia.", D: "A cura milagrosa de sua doença diante da alegria do papel.", E: "Sua revolta violenta contra os oficiais de justiça." }, correct: "B", explanations: { A: "A justiça foi tardia, o que retira parte do 'triunfo perfeito'.", B: "CORRETO! É a grande tragédia final do livro: a reparação jurídica chega, mas a consciência de Eunice já partiu.", C: "Falso, a doença era real e severa.", D: "Falso.", E: "Falso." } },
+            { id: "mc30", category: "Estilo AOCP", text: "Assinale a alternativa cuja palavra está grafada INCORRETAMENTE, considerando o contexto de análise histórica do livro.", options: { A: "Exceção.", B: "Imprescindível.", C: "Anistia.", D: "Subverção.", E: "Censura." }, correct: "D", explanations: { A: "Correto.", B: "Correto.", C: "Correto.", D: "CORRETO (Aqui está o erro ortográfico). O correto é 'Subversão' (com S). (Pegadinha clássica de ortografia).", E: "Correto." } }
+        ];
+
+        // 10 True/False Questions (CEBRASPE Style)
+        const ceQuestions = [
+            { id: "ce1", category: "História", text: "Julgue o item: Rubens Paiva era um guerrilheiro que atuava na clandestinidade liderando assaltos a bancos quando foi morto pelo DOI-CODI.", correct: "Errado", explanation: "Rubens era um engenheiro e político (deputado cassado). Não participava da luta armada ou assaltos." },
+            { id: "ce2", category: "Interpretação", text: "Julgue o item: O núcleo emocional da narrativa de Marcelo Rubens Paiva recai mais sobre a figura materna, Eunice Paiva, do que na figura do pai desaparecido.", correct: "Certo", explanation: "Exato. O livro é uma grande homenagem à resiliência de Eunice e ao seu enfrentamento do Alzheimer." },
+            { id: "ce3", category: "Sintaxe", text: "Na oração 'Eunice, que sempre foi dona de casa, formou-se advogada', a vírgula isola uma oração subordinada adjetiva explicativa.", correct: "Certo", explanation: "Correto. Oração introduzida pelo pronome relativo 'que' entre vírgulas, explicando um termo anterior (Eunice)." },
+            { id: "ce4", category: "História", text: "Julgue o item: A versão oficial dos militares sustentada por décadas era de que Rubens Paiva havia sido resgatado por companheiros 'terroristas' e encontrava-se foragido.", correct: "Certo", explanation: "Correto. Essa foi a versão forjada (a 'fuga espetacular') para justificar o desaparecimento do corpo após as torturas que o mataram." },
+            { id: "ce5", category: "Interpretação", text: "Julgue o item: A Comissão Nacional da Verdade (CNV), citada no livro, foi um tribunal de exceção que julgou e condenou à prisão vários generais da ditadura militar em 2014.", correct: "Errado", explanation: "A CNV investigou e apontou culpados, estabeleceu a verdade histórica (emitindo o atestado de óbito de Rubens, por ex.), mas NÃO tinha poder punitivo/penal devido à interpretação da Lei da Anistia. Ninguém foi preso pela CNV." },
+            { id: "ce6", category: "Morfologia", text: "Em 'A dor inesquecível do desaparecimento', o prefixo 'in-' e o sufixo '-vel' na palavra destacada indicam, respectivamente, negação e possibilidade/capacidade.", correct: "Certo", explanation: "Correto. 'in' (não) + 'esquecer' + 'vel' (que se pode) = que não se pode esquecer." },
+            { id: "ce7", category: "Interpretação", text: "Julgue o item: O título 'Ainda estou aqui' se refere exclusivamente à sobrevivência física de Marcelo, que escapou ileso do cerco militar que prendeu sua família em 1971.", correct: "Errado", explanation: "O título tem sentido múltiplo, focando muito em Eunice ('ainda estou aqui' nas memórias, na essência, mesmo com Alzheimer) e na presença das memórias no Brasil." },
+            { id: "ce8", category: "Gramática", text: "Julgue a concordância: 'Havia muitas testemunhas no quartel na noite do crime, mas nenhuma se pronunciou na época.' A frase obedece às normas padrão da língua portuguesa.", correct: "Certo", explanation: "Correto. O verbo 'haver' com sentido de existir é impessoal e fica no singular." },
+            { id: "ce9", category: "História", text: "Julgue o item: A Lei da Anistia de 1979 excluiu os crimes de tortura e homicídio cometidos por agentes do Estado, permitindo a punição imediata dos assassinos de Rubens Paiva.", correct: "Errado", explanation: "Incorreto. Na interpretação jurídica do STF, a lei beneficiou ambos os lados ('conexos'), blindando os torturadores estatais de punição penal no Brasil." },
+            { id: "ce10", category: "Figuras de Linguagem", text: "Na expressão 'A memória é um campo minado', o autor utiliza uma metáfora para descrever o quão perigoso e doloroso é revisitar os traumas do passado.", correct: "Certo", explanation: "Correto. Há uma comparação implícita entre a memória e um campo cheio de explosivos (traumas)." }
+        ];
+
+        let state = {
+            mcAnswers: {}, // { id: status('correct'|'incorrect') }
+            ceAnswers: {},
+            stats: { history: 0, interp: 0, grammar: 0, total: 0, max: mcQuestions.length + ceQuestions.length }
+        };
+
+        let myChart = null;
+
+        // --- GEMINI API INTEGRATION ---
+        const apiKey = "AIzaSyDiIO_T3EPTYIw9akDAR8ak6Po7ZAOEXqc"; // A chave é providenciada automaticamente pelo ambiente de execução
+        
+        async function fetchGeminiWithRetry(prompt, systemInstruction, retries = 5) {
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] }
+            };
+
+            const delays = [1000, 2000, 4000, 8000, 16000];
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP erro! status: ${response.status}`);
+
+                    const data = await response.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Desculpe, não consegui gerar uma resposta.";
+                } catch (error) {
+                    if (i === retries - 1) return "Erro de conexão ao contatar a inteligência artificial. Por favor, tente novamente mais tarde.";
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        }
+
+        async function askAI() {
+            const questionInput = document.getElementById('ai-question');
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            const btn = document.getElementById('btn-ask-ai');
+            const answerBox = document.getElementById('ai-answer-box');
+            
+            btn.disabled = true;
+            btn.innerHTML = `<span class="animate-pulse">Consultando o livro...</span>`;
+            answerBox.classList.remove('hidden');
+            answerBox.innerHTML = "Analisando sua dúvida com base no contexto literário e histórico...";
+
+            const systemPrompt = "Você é um professor especialista em Literatura Brasileira e História do Brasil, focado em preparar alunos para concursos (UERJ, CEBRASPE, AOCP). Você domina profundamente o livro 'Ainda Estou Aqui' de Marcelo Rubens Paiva. Responda à dúvida do aluno de forma clara, didática e direta, relacionando com os temas da obra (ditadura, tortura, DOI-CODI, memória, Alzheimer, Lei da Anistia). Use formatação amigável, negritos em termos cruciais e limite a resposta a 3 ou 4 parágrafos curtos.";
+            
+            const answer = await fetchGeminiWithRetry(question, systemPrompt);
+            
+            answerBox.innerHTML = answer;
+            btn.disabled = false;
+            btn.innerHTML = `<span>Perguntar ao Professor</span>`;
+            questionInput.value = '';
+        }
+
+        async function generateEssayQuestion() {
+            const examStyle = document.getElementById('ai-exam-style').value;
+            const btn = document.getElementById('btn-gen-ai');
+            const essayBox = document.getElementById('ai-essay-box');
+            
+            btn.disabled = true;
+            btn.innerHTML = `<span class="animate-pulse">Criando questão inédita...</span>`;
+            essayBox.classList.remove('hidden');
+            essayBox.innerHTML = `Elaborando uma questão discursiva no formato ${examStyle}...`;
+
+            const systemPrompt = `Você é um elaborador de provas de concurso de alto nível. Crie uma questão DISCURSIVA inédita sobre o livro 'Ainda Estou Aqui' de Marcelo Rubens Paiva no estilo da banca ${examStyle}. 
+            Se for UERJ: Foco em interpretação de texto, profundidade emocional, metáforas e a relação entre a memória da mãe (Eunice) e a do Brasil. 
+            Se for CEBRASPE: Foco no contexto histórico, fatos da ditadura militar, atuação da Comissão Nacional da Verdade (CNV) e a Lei da Anistia.
+            
+            Formato OBRIGATÓRIO de saída:
+            **TEXTO MOTIVADOR:**
+            [Forneça um breve trecho real ou adaptado da obra que sirva de gancho]
+            
+            **ENUNCIADO DA QUESTÃO:**
+            [Faça o comando da questão pedindo para analisar/explicar/discorrer]
+            
+            **PADRÃO DE RESPOSTA ESPERADO:**
+            [Explique em 3 ou 4 tópicos o que o candidato precisaria escrever para tirar nota máxima nesta questão]`;
+            
+            const prompt = `Gere uma questão discursiva estilo ${examStyle}.`;
+            const answer = await fetchGeminiWithRetry(prompt, systemPrompt);
+            
+            essayBox.innerHTML = answer;
+            btn.disabled = false;
+            btn.innerHTML = `<span>Gerar Questão Inédita ✨</span>`;
+        }
+
+        // --- CORE LOGIC ---
+
+        function initApp() {
+            renderMCQuestions();
+            renderCEQuestions();
+            // Try to load saved state
+            const savedState = localStorage.getItem('aindaEstouAquiState');
+            if(savedState) {
+                try {
+                    state = JSON.parse(savedState);
+                    restoreUIState();
+                } catch(e) { console.error("Error loading state"); }
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-gray-800', 'text-amber-400');
+            });
+            document.querySelector(`button[data-target="${tabId}"]`).classList.add('bg-gray-800', 'text-amber-400');
+
+            if(tabId === 'desempenho') {
+                updateChart();
+            }
+        }
+
+        // --- RENDER MULTIPLE CHOICE ---
+        function renderMCQuestions() {
+            const container = document.getElementById('mc-container');
+            container.innerHTML = '';
+            mcQuestions.forEach((q, index) => {
+                const qDiv = document.createElement('div');
+                qDiv.className = 'bg-white p-6 rounded-lg shadow-sm border border-gray-200';
+                qDiv.id = `mc-box-${q.id}`;
+                
+                let html = `
+                    <div class="flex justify-between items-start mb-4 border-b pb-2">
+                        <span class="font-bold text-gray-500">Questão ${index + 1}</span>
+                        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded border">${q.category}</span>
+                    </div>
+                    <p class="text-gray-800 mb-6 font-medium">${q.text}</p>
+                    <div class="space-y-3" id="options-${q.id}">
+                `;
+
+                for (const [key, value] of Object.entries(q.options)) {
+                    html += `
+                        <button onclick="handleMCAnswer('${q.id}', '${key}')" id="btn-${q.id}-${key}" class="option-btn w-full text-left p-4 border rounded-md text-sm text-gray-700 bg-gray-50">
+                            <span class="font-bold mr-2 text-gray-500">${key})</span> ${value}
+                        </button>
+                    `;
+                }
+                
+                html += `</div>
+                    <div id="feedback-${q.id}" class="mt-4 hidden p-4 rounded-md text-sm border"></div>
+                `;
+                qDiv.innerHTML = html;
+                container.appendChild(qDiv);
+            });
+        }
+
+        function handleMCAnswer(qId, selectedKey) {
+            if (state.mcAnswers[qId]) return; // Already answered
+            
+            const q = mcQuestions.find(x => x.id === qId);
+            const isCorrect = selectedKey === q.correct;
+            
+            state.mcAnswers[qId] = { selected: selectedKey, isCorrect: isCorrect };
+            updateStats(q.category, isCorrect);
+            saveState();
+
+            // UI Updates
+            const buttons = document.querySelectorAll(`#options-${qId} button`);
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('cursor-not-allowed', 'opacity-60');
+            });
+
+            const selectedBtn = document.getElementById(`btn-${qId}-${selectedKey}`);
+            const correctBtn = document.getElementById(`btn-${qId}-${q.correct}`);
+            
+            selectedBtn.classList.remove('bg-gray-50', 'opacity-60');
+            correctBtn.classList.remove('bg-gray-50', 'opacity-60');
+            
+            if (isCorrect) {
+                selectedBtn.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+            } else {
+                selectedBtn.classList.add('bg-red-100', 'border-red-500', 'text-red-800');
+                correctBtn.classList.add('bg-green-100', 'border-green-500', 'text-green-800'); // Show correct
+            }
+
+            // Gabarito Comentado Focus no Erro/Acerto
+            const feedbackDiv = document.getElementById(`feedback-${qId}`);
+            feedbackDiv.classList.remove('hidden');
+            
+            if (isCorrect) {
+                feedbackDiv.classList.add('bg-green-50', 'border-green-200', 'text-green-800');
+                feedbackDiv.innerHTML = `<strong>Acertou!</strong> ${q.explanations[selectedKey]}`;
+            } else {
+                feedbackDiv.classList.add('bg-red-50', 'border-red-200', 'text-red-800');
+                feedbackDiv.innerHTML = `<strong>Errou. Entenda a pegadinha:</strong><br>Você marcou ${selectedKey}: ${q.explanations[selectedKey]}<br><br><strong>A correta é ${q.correct}:</strong> ${q.explanations[q.correct]}`;
+            }
+        }
+
+        // --- RENDER CERTO/ERRADO ---
+        function renderCEQuestions() {
+            const container = document.getElementById('ce-container');
+            container.innerHTML = '';
+            ceQuestions.forEach((q, index) => {
+                const qDiv = document.createElement('div');
+                qDiv.className = 'bg-white p-6 rounded-lg shadow-sm border border-gray-200';
+                
+                let html = `
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="font-bold text-gray-500">Item ${index + 1}</span>
+                        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded border">${q.category}</span>
+                    </div>
+                    <p class="text-gray-800 mb-6 font-medium">${q.text}</p>
+                    <div class="flex gap-4" id="ce-options-${q.id}">
+                        <button onclick="handleCEAnswer('${q.id}', 'Certo')" id="btn-${q.id}-Certo" class="option-btn flex-1 py-3 border rounded text-gray-700 font-bold bg-gray-50 hover:bg-green-50 hover:border-green-300">CERTO</button>
+                        <button onclick="handleCEAnswer('${q.id}', 'Errado')" id="btn-${q.id}-Errado" class="option-btn flex-1 py-3 border rounded text-gray-700 font-bold bg-gray-50 hover:bg-red-50 hover:border-red-300">ERRADO</button>
+                    </div>
+                    <div id="feedback-ce-${q.id}" class="mt-4 hidden p-4 rounded-md text-sm border bg-gray-50 text-gray-800"></div>
+                `;
+                qDiv.innerHTML = html;
+                container.appendChild(qDiv);
+            });
+        }
+
+        function handleCEAnswer(qId, selectedChoice) {
+            if (state.ceAnswers[qId]) return;
+            
+            const q = ceQuestions.find(x => x.id === qId);
+            const isCorrect = selectedChoice === q.correct;
+            
+            state.ceAnswers[qId] = { selected: selectedChoice, isCorrect: isCorrect };
+            updateStats(q.category, isCorrect);
+            saveState();
+
+            // UI
+            const buttons = document.querySelectorAll(`#ce-options-${qId} button`);
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('cursor-not-allowed', 'opacity-50');
+            });
+
+            const selectedBtn = document.getElementById(`btn-${qId}-${selectedChoice}`);
+            selectedBtn.classList.remove('opacity-50', 'bg-gray-50');
+            
+            if (isCorrect) {
+                selectedBtn.classList.add('bg-green-500', 'text-white', 'border-green-600');
+            } else {
+                selectedBtn.classList.add('bg-red-500', 'text-white', 'border-red-600');
+                // show what the correct was on the other button
+                const correctBtn = document.getElementById(`btn-${qId}-${q.correct}`);
+                correctBtn.classList.remove('opacity-50', 'bg-gray-50');
+                correctBtn.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+            }
+
+            const feedbackDiv = document.getElementById(`feedback-ce-${qId}`);
+            feedbackDiv.classList.remove('hidden');
+            feedbackDiv.innerHTML = `<strong>Gabarito: ${q.correct.toUpperCase()}</strong><br>${q.explanation}`;
+        }
+
+        // --- STATS & CHART ---
+        function updateStats(categoryRaw, isCorrect) {
+            state.stats.total++;
+            if (!isCorrect) return; // Only count correct for the radar
+
+            // Categorize broadly
+            const cat = categoryRaw.toLowerCase();
+            if (cat.includes('hist') || cat.includes('cnv')) state.stats.history++;
+            else if (cat.includes('interp') || cat.includes('lit')) state.stats.interp++;
+            else state.stats.grammar++;
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('performanceChart');
+            
+            const totalAnswered = Object.keys(state.mcAnswers).length + Object.keys(state.ceAnswers).length;
+            const textDiv = document.getElementById('stats-text');
+            
+            if (totalAnswered === 0) {
+                textDiv.innerHTML = "Responda algumas questões para ver seu gráfico!";
+                return;
+            }
+
+            const totalCorrect = state.stats.history + state.stats.interp + state.stats.grammar;
+            const percent = Math.round((totalCorrect / totalAnswered) * 100);
+            
+            textDiv.innerHTML = `
+                <div class="text-2xl font-bold text-gray-800 mb-1">Precisão: ${percent}%</div>
+                <div class="text-sm">Respondidas: ${totalAnswered} / ${state.stats.max}</div>
+                <div class="text-sm mt-2 text-gray-500">Continue usando o gabarito comentado para aprender com os erros!</div>
+            `;
+
+            if (myChart) myChart.destroy();
+
+            // Calculate max possible per category (approximate for radar max)
+            const data = [state.stats.interp, state.stats.history, state.stats.grammar];
+
+            myChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Interpretação/Literatura', 'História/Contexto', 'Gramática/Sintaxe'],
+                    datasets: [{
+                        label: 'Acertos por Área',
+                        data: data,
+                        backgroundColor: 'rgba(217, 119, 6, 0.2)', // Amber-600
+                        borderColor: 'rgba(217, 119, 6, 1)',
+                        pointBackgroundColor: 'rgba(217, 119, 6, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(217, 119, 6, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Critical for Tailwind container constraints
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0,0,0,0.1)' },
+                            grid: { color: 'rgba(0,0,0,0.1)' },
+                            pointLabels: {
+                                font: { size: 12, family: "'Open Sans', sans-serif" },
+                                color: '#4B5563'
+                            },
+                            ticks: {
+                                beginAtZero: true,
+                                stepSize: 2,
+                                display: false // hide numbers on rings
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.raw} Acertos`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- STATE MANAGEMENT ---
+        function saveState() {
+            localStorage.setItem('aindaEstouAquiState', JSON.stringify(state));
+        }
+
+        function restoreUIState() {
+            // Restore MC UI
+            Object.keys(state.mcAnswers).forEach(qId => {
+                const ans = state.mcAnswers[qId];
+                const q = mcQuestions.find(x => x.id === qId);
+                if(q) {
+                    const buttons = document.querySelectorAll(`#options-${qId} button`);
+                    buttons.forEach(btn => {
+                        btn.disabled = true;
+                        btn.classList.add('cursor-not-allowed', 'opacity-60');
+                    });
+                    const selectedBtn = document.getElementById(`btn-${qId}-${ans.selected}`);
+                    const correctBtn = document.getElementById(`btn-${qId}-${q.correct}`);
+                    if(selectedBtn) selectedBtn.classList.remove('bg-gray-50', 'opacity-60');
+                    if(correctBtn) correctBtn.classList.remove('bg-gray-50', 'opacity-60');
+                    
+                    if (ans.isCorrect) {
+                        if(selectedBtn) selectedBtn.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+                    } else {
+                        if(selectedBtn) selectedBtn.classList.add('bg-red-100', 'border-red-500', 'text-red-800');
+                        if(correctBtn) correctBtn.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+                    }
+                    const feedbackDiv = document.getElementById(`feedback-${qId}`);
+                    feedbackDiv.classList.remove('hidden');
+                    if (ans.isCorrect) {
+                        feedbackDiv.classList.add('bg-green-50', 'border-green-200', 'text-green-800');
+                        feedbackDiv.innerHTML = `<strong>Acertou!</strong> ${q.explanations[ans.selected]}`;
+                    } else {
+                        feedbackDiv.classList.add('bg-red-50', 'border-red-200', 'text-red-800');
+                        feedbackDiv.innerHTML = `<strong>Errou. Entenda a pegadinha:</strong><br>Você marcou ${ans.selected}: ${q.explanations[ans.selected]}<br><br><strong>A correta é ${q.correct}:</strong> ${q.explanations[q.correct]}`;
+                    }
+                }
+            });
+
+            // Restore CE UI
+            Object.keys(state.ceAnswers).forEach(qId => {
+                const ans = state.ceAnswers[qId];
+                const q = ceQuestions.find(x => x.id === qId);
+                if(q) {
+                    const buttons = document.querySelectorAll(`#ce-options-${qId} button`);
+                    buttons.forEach(btn => {
+                        btn.disabled = true;
+                        btn.classList.add('cursor-not-allowed', 'opacity-50');
+                    });
+                    const selectedBtn = document.getElementById(`btn-${qId}-${ans.selected}`);
+                    if(selectedBtn) selectedBtn.classList.remove('opacity-50', 'bg-gray-50');
+                    
+                    if (ans.isCorrect) {
+                        if(selectedBtn) selectedBtn.classList.add('bg-green-500', 'text-white', 'border-green-600');
+                    } else {
+                        if(selectedBtn) selectedBtn.classList.add('bg-red-500', 'text-white', 'border-red-600');
+                        const correctBtn = document.getElementById(`btn-${qId}-${q.correct}`);
+                        if(correctBtn) {
+                            correctBtn.classList.remove('opacity-50', 'bg-gray-50');
+                            correctBtn.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+                        }
+                    }
+                    const feedbackDiv = document.getElementById(`feedback-ce-${qId}`);
+                    feedbackDiv.classList.remove('hidden');
+                    feedbackDiv.innerHTML = `<strong>Gabarito: ${q.correct.toUpperCase()}</strong><br>${q.explanation}`;
+                }
+            });
+        }
+
+        function resetProgress() {
+            if(confirm("Tem certeza que deseja apagar todo o seu progresso no simulado?")) {
+                localStorage.removeItem('aindaEstouAquiState');
+                state = {
+                    mcAnswers: {}, ceAnswers: {},
+                    stats: { history: 0, interp: 0, grammar: 0, total: 0, max: mcQuestions.length + ceQuestions.length }
+                };
+                renderMCQuestions();
+                renderCEQuestions();
+                updateChart();
+            }
+        }
+
+        // Run
+        window.onload = initApp;
+    </script>
+</body>
+</html>
